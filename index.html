@@ -74,8 +74,6 @@
           <option>بانتظار رد الشركة</option>
           <option>بانتظار قطعة الغيار</option>
         </select>
-        <label>رفع صورة العطل</label>
-        <input id="faultImage" type="file" accept="image/*" onchange="uploadAttachment(event)"/>
         <div class="row" style="margin-top:10px">
           <button id="addBtn" class="btn">إضافة العطل</button>
           <button class="btn ghost" id="clearBtn">مسح الحقول</button>
@@ -172,7 +170,7 @@
 </section>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbwB713OcbuSpUfLVbDB2ruJllEy5Pi1FwKxrlyMwCT62JZzacJZz6JkAt9_hNbRbsWL/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzIwszIpDBo_ATLj4-sRT6hkpuIOq9Ef0r44YmpQwU7am4R583ETYTcdi1g7Ra8sc7v/exec';
 /* storage keys */
 const K_FAULTS='faults_v2_final', K_ORDERS='orders_v2_final', K_TRASH='trash_v2_final';
 
@@ -206,24 +204,6 @@ show('faults');
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function saveAll(){ localStorage.setItem(K_FAULTS, JSON.stringify(faults)); localStorage.setItem(K_ORDERS, JSON.stringify(orders)); localStorage.setItem(K_TRASH, JSON.stringify(trash)); }
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-let faultImageData = null;
-
-function uploadAttachment(evt) {
-  const file = evt.target.files[0];
-  if (!file) {
-    faultImageData = null;
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    faultImageData = e.target.result; // Data URL (base64)
-    console.log('image loaded', faultImageData.slice(0,50) + '...');
-  };
-  reader.readAsDataURL(file);
-}
-
 
 /* render functions */
 function renderFaultTable(){
@@ -289,8 +269,6 @@ document.getElementById('clearBtn').addEventListener('click', clearFaultForm);
 function clearFaultForm(){
   editingFaultId = null;
   document.getElementById('machine').value=''; document.getElementById('line').value=''; document.getElementById('person').value=''; document.getElementById('description').value=''; document.getElementById('shift').value='صباحية'; document.getElementById('date').value=''; document.getElementById('lcode').value=''; document.getElementById('partName').value=''; document.getElementById('partQty').value=0; document.getElementById('status').value='تم الإصلاح'; document.getElementById('addBtn').innerText='إضافة العطل';
-  faultImageData = null;
-  document.getElementById('faultImage').value = '';
 }
 
 function onAddOrSave(){
@@ -306,13 +284,8 @@ function onAddOrSave(){
     lcode: document.getElementById('lcode').value.trim(),
     partName: document.getElementById('partName').value.trim(),
     partQty: Number(document.getElementById('partQty').value||0),
-    status: document.getElementById('status').value,
-    imageUrl: null          // عمود اللينك للصور
+    status: document.getElementById('status').value
   };
-  // لو فيه صورة مرفوعة دلوقتي
-  if (faultImageData) {
-    f.imageData = faultImageData;
-  }
   fetch(API_URL, {
   method: 'POST',
   // headers: {'Content-Type': 'application/json'},
@@ -361,11 +334,7 @@ function saveEditFault(){
   faults[idx].partName = document.getElementById('partName').value.trim();
   faults[idx].partQty = Number(document.getElementById('partQty').value||0);
   faults[idx].status = document.getElementById('status').value;
-  // لو المستخدم اختار صورة جديدة
-  if (faultImageData) {
-    faults[idx].imageData = faultImageData;
-  }
-  
+
    // ابعت Update للـ Sheet
   const f = faults[idx];
   fetch(API_URL, {
@@ -484,13 +453,13 @@ function permanentDeleteOrder(id){
 }
 
 // function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
-// document.getElementById('emptyTrashBtn').addEventListener('click', ()=> 
-//             { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; 
-//             trash={faults:[],orders:[]}; 
-//             saveAll(); 
-//             renderTrash(); });
+document.getElementById('emptyTrashBtn').addEventListener('click', ()=> 
+            { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; 
+            trash={faults:[],orders:[]}; 
+            saveAll(); 
+            renderTrash(); });
 
-document.getElementById('emptyTrashBtn').addEventListener('click', () => {
+            document.getElementById('emptyTrashBtn').addEventListener('click', () => {
   if (!confirm('حذف نهائي لكل المحذوفات (أعطال وأوامر)؟')) return;
 
   // جهّز الـ IDs اللي هتتمسح من الشيت
