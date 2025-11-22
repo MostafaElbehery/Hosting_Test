@@ -74,7 +74,8 @@
           <option>بانتظار رد الشركة</option>
           <option>بانتظار قطعة الغيار</option>
         </select>
-
+        <label>رفع صورة العطل</label>
+        <input id="faultImage" type="file" accept="image/*" onchange="uploadAttachment(event,'faultImageTemp')"/>
         <div class="row" style="margin-top:10px">
           <button id="addBtn" class="btn">إضافة العطل</button>
           <button class="btn ghost" id="clearBtn">مسح الحقول</button>
@@ -454,7 +455,53 @@ function permanentDeleteOrder(id){
 }
 
 // function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
-document.getElementById('emptyTrashBtn').addEventListener('click', ()=> { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; trash={faults:[],orders:[]}; saveAll(); renderTrash(); });
+// document.getElementById('emptyTrashBtn').addEventListener('click', ()=> 
+//             { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; 
+//             trash={faults:[],orders:[]}; 
+//             saveAll(); 
+//             renderTrash(); });
+
+document.getElementById('emptyTrashBtn').addEventListener('click', () => {
+  if (!confirm('حذف نهائي لكل المحذوفات (أعطال وأوامر)؟')) return;
+
+  // جهّز الـ IDs اللي هتتمسح من الشيت
+  const faultIds = trash.faults.map(f => f.id);
+  const orderIds = trash.orders.map(o => o.id);
+
+  const requests = [];
+
+  // ابعت طلب حذف لكل عطل
+  faultIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'fault', op: 'delete', data: { id } })
+      })
+    );
+  });
+
+  // ابعت طلب حذف لكل أمر شراء
+  orderIds.forEach(id => {
+    requests.push(
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'order', op: 'delete', data: { id } })
+      })
+    );
+  });
+
+  // لما تخلص كل الطلبات (حتى لو في بعضها فشل)
+  Promise.allSettled(requests).then(() => {
+    // فضّي السلة محليًا
+    trash = { faults: [], orders: [] };
+    saveAll();
+    renderTrash();
+    alert('تم الحذف النهائي لكل المحذوفات من السلة، وحاولنا حذفها من DB أيضًا.');
+  }).catch(err => {
+    console.error('empty trash error', err);
+    alert('حدث خطأ أثناء الحذف من Google Sheet، لكن تم تفريغ السلة محليًا.');
+  });
+});
 
 /* filters */
 document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
