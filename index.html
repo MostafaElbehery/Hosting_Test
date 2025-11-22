@@ -290,7 +290,7 @@ function onAddOrSave(){
   };
   fetch(API_URL, {
   method: 'POST',
-  headers: {'Content-Type': 'application/json'},
+  // headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({ kind: 'fault', data: f })
 }).then(r => r.json())
   .then(res => {
@@ -355,7 +355,7 @@ function addOrder(){
   const o = { id: uid(), orderNum: document.getElementById('orderNum').value.trim(), supplyNum: document.getElementById('supplyNum').value.trim(), date: document.getElementById('orderDate').value, person: document.getElementById('orderPerson').value.trim(), details: document.getElementById('orderDetails').value.trim() };
   fetch(API_URL, {
   method: 'POST',
-  headers: {'Content-Type': 'application/json'},
+  // headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({ kind: 'order', data: o })
 }).then(r => r.json())
   .then(res => {
@@ -478,7 +478,7 @@ function drawDashboard(){
   let start=0; const totalSum = data.reduce((a,b)=>a+b,0);
   for(let i=0;i<data.length;i++){
     const slice = totalSum===0?0:(data[i]/totalSum)*(Math.PI*2);
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle=colors[i]; ctx.arc(cx,cy,start,start+slice); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.fillStyle=colors[i]; ctx.arc(cx,cy,r,start,start+slice); ctx.closePath(); ctx.fill();
     start += slice;
   }
   ctx.font='13px Arial'; let ly=10; for(let i=0;i<labels.length;i++){ ctx.fillStyle=colors[i]; ctx.fillRect(10,ly,12,12); ctx.fillStyle='#000'; ctx.fillText(` ${labels[i]} (${data[i]})`, 28, ly+10); ly+=18; }
