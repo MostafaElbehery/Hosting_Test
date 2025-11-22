@@ -171,7 +171,7 @@
 </section>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbwfd5A7LQKhRwN5o-drlBfOmz5OIjyorAp9QDHZ3p0bG2Jaezl1GVq51n45YS_96ED2Yw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby02qBzuWbA9-TPwpsxgL0tGA50dlLtfj5xpoXcw-MeYStxWBLm-T6-K3mscb5a_W7P/exec';
 
 /* storage keys */
 const K_FAULTS='faults_v2_final', K_ORDERS='orders_v2_final', K_TRASH='trash_v2_final';
@@ -291,7 +291,7 @@ function onAddOrSave(){
   fetch(API_URL, {
   method: 'POST',
   // headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ kind: 'fault', data: f })
+  body: JSON.stringify({ kind: 'fault', op: 'add', data: f })
 }).then(r => r.json())
   .then(res => {
     if (!res.ok) alert('في مشكلة في حفظ العطل على السيرفر، هيتحفظ Local بس');
@@ -324,6 +324,8 @@ function startEditFault(id){
 
 function saveEditFault(){
   const idx = faults.findIndex(x=>x.id===editingFaultId); if(idx===-1) return alert('خطأ التعديل');
+
+  // حدّث في المصفوفة
   faults[idx].machine = document.getElementById('machine').value.trim();
   faults[idx].line = document.getElementById('line').value.trim();
   faults[idx].person = document.getElementById('person').value.trim();
@@ -334,8 +336,23 @@ function saveEditFault(){
   faults[idx].partName = document.getElementById('partName').value.trim();
   faults[idx].partQty = Number(document.getElementById('partQty').value||0);
   faults[idx].status = document.getElementById('status').value;
+
+   // ابعت Update للـ Sheet
+  const f = faults[idx];
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'fault', op: 'update', data: f })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('التعديل لم يُحفظ على السيرفر (Sheet)');
+    })
+    .catch(err => console.error('fault update error', err));
+
   editingFaultId = null;
-  clearFaultForm(); renderFaultTable(); drawDashboard(); show('faults');
+  clearFaultForm(); 
+  renderFaultTable(); 
+  drawDashboard(); 
+  show('faults');
 }
 
 function moveToTrashFault(id){
@@ -343,7 +360,27 @@ function moveToTrashFault(id){
   trash.faults.unshift(faults.splice(idx,1)[0]); saveAll(); renderFaultTable(); renderTrash(); drawDashboard();
 }
 function restoreFault(id){ const idx = trash.faults.findIndex(x=>x.id===id); if(idx===-1) return; faults.unshift(trash.faults.splice(idx,1)[0]); saveAll(); renderFaultTable(); renderTrash(); drawDashboard(); }
-function permanentDeleteFault(id){ const idx = trash.faults.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.faults.splice(idx,1); saveAll(); renderTrash(); }
+// function permanentDeleteFault(id){ const idx = trash.faults.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.faults.splice(idx,1); saveAll(); renderTrash(); }
+function permanentDeleteFault(id){
+  const idx = trash.faults.findIndex(x=>x.id===id); 
+  if(idx===-1) return;
+  if(!confirm('حذف نهائي؟')) return;
+
+  // ابعت Delete للـ Sheet
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'fault', op: 'delete', data: { id } })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('لم يتم الحذف من السيرفر (Sheet)');
+    })
+    .catch(err => console.error('fault delete error', err));
+
+  trash.faults.splice(idx,1); 
+  saveAll(); 
+  renderTrash(); 
+}
+
 
 /* CRUD orders */
 let editingOrderId = null;
@@ -356,7 +393,7 @@ function addOrder(){
   fetch(API_URL, {
   method: 'POST',
   // headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ kind: 'order', data: o })
+  body: JSON.stringify({ kind: 'order', op: 'add', data: o })
 }).then(r => r.json())
   .then(res => {
     if (!res.ok) alert('مشكلة في حفظ الأمر على السيرفر، هيتحفظ Local بس');
@@ -369,11 +406,55 @@ function addOrder(){
 function startEditOrder(id){
   const o = orders.find(x=>x.id===id); if(!o) return alert('غير موجود'); editingOrderId=id; document.getElementById('orderNum').value=o.orderNum; document.getElementById('supplyNum').value=o.supplyNum; document.getElementById('orderDate').value=o.date; document.getElementById('orderPerson').value=o.person; document.getElementById('orderDetails').value=o.details; document.getElementById('addOrderBtn').innerText='حفظ التعديل';
 }
-function saveEditOrder(){ const idx=orders.findIndex(x=>x.id===editingOrderId); if(idx===-1) return; orders[idx].orderNum=document.getElementById('orderNum').value.trim(); orders[idx].supplyNum=document.getElementById('supplyNum').value.trim(); orders[idx].date=document.getElementById('orderDate').value; orders[idx].person=document.getElementById('orderPerson').value.trim(); orders[idx].details=document.getElementById('orderDetails').value.trim(); editingOrderId=null; clearOrderForm(); renderOrderTable(); }
+// function saveEditOrder(){ const idx=orders.findIndex(x=>x.id===editingOrderId); if(idx===-1) return; orders[idx].orderNum=document.getElementById('orderNum').value.trim(); orders[idx].supplyNum=document.getElementById('supplyNum').value.trim(); orders[idx].date=document.getElementById('orderDate').value; orders[idx].person=document.getElementById('orderPerson').value.trim(); orders[idx].details=document.getElementById('orderDetails').value.trim(); editingOrderId=null; clearOrderForm(); renderOrderTable(); }
+function saveEditOrder(){
+  const idx = orders.findIndex(x=>x.id===editingOrderId); 
+  if(idx===-1) return;
+
+  orders[idx].orderNum = document.getElementById('orderNum').value.trim();
+  orders[idx].supplyNum= document.getElementById('supplyNum').value.trim();
+  orders[idx].date     = document.getElementById('orderDate').value;
+  orders[idx].person   = document.getElementById('orderPerson').value.trim();
+  orders[idx].details  = document.getElementById('orderDetails').value.trim();
+
+  const o = orders[idx];
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'order', op: 'update', data: o })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('تعديل الأمر لم يُحفظ على السيرفر');
+    })
+    .catch(err => console.error('order update error', err));
+
+  editingOrderId=null; 
+  clearOrderForm(); 
+  renderOrderTable();
+}
+
 function clearOrderForm(){ document.getElementById('orderNum').value=''; document.getElementById('supplyNum').value=''; document.getElementById('orderDate').value=''; document.getElementById('orderPerson').value=''; document.getElementById('orderDetails').value=''; editingOrderId=null; document.getElementById('addOrderBtn').innerText='إضافة أمر'; }
 function moveToTrashOrder(id){ const idx=orders.findIndex(x=>x.id===id); if(idx===-1) return; trash.orders.unshift(orders.splice(idx,1)[0]); saveAll(); renderOrderTable(); renderTrash(); }
 function restoreOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; orders.unshift(trash.orders.splice(idx,1)[0]); saveAll(); renderOrderTable(); renderTrash(); }
-function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
+function permanentDeleteOrder(id){
+  const idx = trash.orders.findIndex(x=>x.id===id); 
+  if(idx===-1) return;
+  if(!confirm('حذف نهائي؟')) return;
+
+  fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'order', op: 'delete', data: { id } })
+  }).then(r=>r.json())
+    .then(res => {
+      if(!res.ok) alert('لم يتم الحذف من السيرفر (Sheet)');
+    })
+    .catch(err => console.error('order delete error', err));
+
+  trash.orders.splice(idx,1); 
+  saveAll(); 
+  renderTrash();
+}
+
+// function permanentDeleteOrder(id){ const idx=trash.orders.findIndex(x=>x.id===id); if(idx===-1) return; if(!confirm('حذف نهائي؟')) return; trash.orders.splice(idx,1); saveAll(); renderTrash(); }
 document.getElementById('emptyTrashBtn').addEventListener('click', ()=> { if(!confirm('حذف نهائي لكل المحذوفات؟')) return; trash={faults:[],orders:[]}; saveAll(); renderTrash(); });
 
 /* filters */
